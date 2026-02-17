@@ -52,7 +52,7 @@ clear-key                          # Remove stored API key
 # Card generation — needs API key (keyring or ANTHROPIC_API_KEY env var)
 preview WORD [--model M]           # Dry run card generation
 add WORD... [--apkg APKG] [--freq-db DB] [--model M]  # Generate cards, review, write APKG
-add-batch DB -n COUNT [--range S E] [--apkg APKG] [--sequential] [--delay D]  # Batch from frequency list
+add-batch DB APKG -n COUNT [--range S E] [--delay D]  # Batch random pending words from frequency list
 enrich APKG [-n N] [--model M]     # Backfill Collocations/Etymology (default) or all fields (--full)
 refresh WORD... [--apkg APKG]      # Regenerate all fields for existing cards (same GUID)
 export APKG [-o FILE]              # Export all cards as CSV
@@ -89,21 +89,19 @@ Output is a timestamped `.apkg` file (e.g. `AZ_update_2026-02-15_182518.apkg`) �
 
 ### Building shareable decks for friends
 
-```powershell
-# Step 1: Generate top-1000 into cache (API calls happen here)
-python -m greek_anki add-batch freq_list.sq3 -n 1000 --range 1 1000 --sequential --no-review -y
+Use `build-deck` (not `add-batch`) — it ignores word processing status and doesn't mutate the frequency DB.
 
-# Step 2: Build shareable deck from cache (no API calls)
+```powershell
+# Generate top-1000 deck in one command (API calls + cache + APKG)
+python -m greek_anki build-deck freq_list.sq3 --range 1 1000 --generate-missing -y
+
+# Build top-3000 (only 2000 new API calls, first 1000 already cached)
+python -m greek_anki build-deck freq_list.sq3 --range 1 3000 --generate-missing -y
+
+# Rebuild any range from cache (no API calls)
 python -m greek_anki build-deck freq_list.sq3 --range 1 1000 --deck-name "Greek Top 1000"
 
-# Step 3: Later, generate 1001-3000
-python -m greek_anki add-batch freq_list.sq3 -n 2000 --range 1001 3000 --sequential --no-review -y
-
-# Step 4: Build increment or combined deck (reuses cache, no extra API calls)
-python -m greek_anki build-deck freq_list.sq3 --range 1001 3000 --deck-name "Greek 1001-3000"
-python -m greek_anki build-deck freq_list.sq3 --range 1 3000 --deck-name "Greek Top 3000"
-
-# Check cache coverage before building
+# Check cache coverage
 python -m greek_anki cache-status --freq-db freq_list.sq3 --range 1 5000
 ```
 
@@ -115,7 +113,7 @@ python -m greek_anki cache-status --freq-db freq_list.sq3 --range 1 5000
 - Supplementary APKG strategy: tool generates new `.apkg` files, user imports them into Anki (safe merge)
 - Tags applied to new cards: `auto-generated`, `added::YYYY-MM`, `pos::TYPE`, `freq::START-END`
 - `add` command: `--apkg` and `--freq-db` are optional; without them it skips duplicate check / frequency tracking
-- `add-batch` command: `--apkg` is optional (skip duplicate check when absent); `--sequential` selects words by rank order instead of random sampling
+- `add-batch` command: classic personal workflow — picks random pending words, checks duplicates against APKG, marks processed; for fresh shareable decks use `build-deck --generate-missing` instead
 - Card cache (`card_cache.sq3`): SQLite DB storing generated card JSON by normalized Greek word; avoids redundant API calls across `add`, `add-batch`, and `build-deck`
 - `build-deck` reads all words in rank range regardless of processed state (excludes only auto-skipped function words); uses deterministic deck ID from deck name
 - `refresh` command: finds existing card by Back field, regenerates all other fields, preserves GUID so Anki overwrites on import

@@ -465,12 +465,9 @@ def _create_batch_apkg(cards_with_tags: list, output_path: str) -> Path:
 
 @cli.command("add-batch")
 @click.argument("freq_db", type=click.Path(exists=True))
-@click.option("--apkg", type=click.Path(exists=True), default=None,
-              help="Existing APKG to check for duplicates")
+@click.argument("apkg_path", type=click.Path(exists=True))
 @click.option("--range", "rank_range", nargs=2, type=int, default=None, help="Rank range")
 @click.option("--count", "-n", type=int, required=True, help="Number of words")
-@click.option("--sequential", is_flag=True,
-              help="Select words in rank order (default: random sample)")
 @click.option("--cache", "cache_path", type=click.Path(), default=DEFAULT_CARD_CACHE,
               help="Card cache database path")
 @click.option("--model", default=DEFAULT_MODEL)
@@ -478,15 +475,18 @@ def _create_batch_apkg(cards_with_tags: list, output_path: str) -> Path:
 @click.option("--no-review", is_flag=True, help="Skip interactive review")
 @click.option("--yes", "-y", is_flag=True, help="Skip cost estimation prompt")
 def add_batch(
-    freq_db, apkg, rank_range, count, sequential, cache_path, model, delay, no_review, yes
+    freq_db, apkg_path, rank_range, count, cache_path, model, delay, no_review, yes
 ):
-    """Add N words from frequency range via Claude API.
+    """Add N random pending words from frequency list via Claude API.
+
+    Picks random pending words, checks for duplicates against the APKG,
+    generates cards, and marks them as processed. For generating fresh
+    shareable decks, use build-deck instead.
 
     \b
     Examples:
-      python -m greek_anki add-batch freq_list.sq3 -n 10 --range 1 500
-      python -m greek_anki add-batch freq_list.sq3 -n 100 --range 1 1000 --sequential --no-review -y
-      python -m greek_anki add-batch freq_list.sq3 -n 10 --apkg deck.apkg
+      python -m greek_anki add-batch freq_list.sq3 deck.apkg -n 10 --range 1 500
+      python -m greek_anki add-batch freq_list.sq3 deck.apkg -n 50 --no-review -y
     """
     from .card_cache import CardCache, generate_card_cached
 
@@ -500,9 +500,7 @@ def add_batch(
         console.print("[yellow]No pending words in the specified range.[/yellow]")
         return
 
-    if sequential:
-        selected = list(pending_rows)[:count]
-    elif len(pending_rows) > count:
+    if len(pending_rows) > count:
         selected = random.sample(list(pending_rows), count)
     else:
         selected = list(pending_rows)
@@ -531,12 +529,10 @@ def add_batch(
         if not click.confirm("Proceed?"):
             return
 
-    # Duplicate check against existing deck (optional)
-    back_fields = []
-    if apkg:
-        console.print(f"Reading existing deck: {apkg}...")
-        notes = read_apkg_notes(apkg)
-        back_fields = [n.back for n in notes]
+    # Duplicate check against existing deck
+    console.print(f"Reading existing deck: {apkg_path}...")
+    notes = read_apkg_notes(apkg_path)
+    back_fields = [n.back for n in notes]
 
     accepted_cards: list = []
     tags_base = [
@@ -554,7 +550,7 @@ def add_batch(
                 f"\n[bold]\u2500\u2500 [{i}/{len(selected)}] {word} (rank {rank}) \u2500\u2500[/bold]"
             )
 
-            if back_fields and freq_word_in_anki(word, back_fields):
+            if freq_word_in_anki(word, back_fields):
                 console.print("[yellow]Already in deck, skipping[/yellow]")
                 with FreqDB(freq_db) as db:
                     db.mark_processed(
@@ -840,7 +836,7 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
 @click.argument("freq_db", type=click.Path(exists=True))
 @click.option("--range", "rank_range", nargs=2, type=int, required=True,
               help="Rank range (e.g. --range 1 1000)")
-@click.option("--cache", "cache_path", type=click.Path(exists=True),
+@click.option("--cache", "cache_path", type=click.Path(),
               default=DEFAULT_CARD_CACHE, help="Card cache database path")
 @click.option("--deck-name", default=None,
               help="Custom deck name (default: 'Greek Top N')")
