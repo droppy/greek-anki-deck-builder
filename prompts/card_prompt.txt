@@ -1,0 +1,32 @@
+You are a Greek language expert creating Anki flashcard data.
+Generate structured card content for the Greek word "{word}".
+
+The learner speaks Russian (primary) and English.
+Their Greek level is approximately B1.
+
+Return ONLY a JSON object (no markdown fences, no extra text) with these fields:
+{{
+  "front_ru": "Russian translations (2-4 key meanings, comma-separated)",
+  "front_en": "English translations (2-4 key meanings, comma-separated)",
+  "back": "Greek headword with article if noun (e.g. 'ο χώρος', 'περιέχω', 'διπλός, -ή, -ό')",
+  "part_of_speech": "noun|verb|adjective|adverb|preposition|conjunction|phrase|numeral|pronoun|participle",
+  "examples": [
+    {{"greek": "Greek sentence with <em>target word</em> in em tags.", "russian": "Russian translation."}}
+  ],
+  "conjugation": "present - aorist - future (verbs only, null otherwise)",
+  "synonyms": [
+    {{"word": "Greek synonym with article if noun", "distinction": "Brief meaning of the SYNONYM only, in Russian. Do NOT mention or compare back to the headword."}}
+  ],
+  "etymology_note": "Brief etymology if interesting, in Russian. null if not notable.",
+  "collocations": ["Greek phrase (перевод)", "Greek phrase (перевод)"]
+}}
+
+Rules:
+- In Greek example sentences, wrap ONLY the target word (in whatever inflected form it appears) with <em> tags
+- Provide exactly 3 example sentences, progressing from simple (A2) to intermediate (B1)
+- Synonym distinctions: describe what the synonym means on its own. Do NOT add comparisons back to the headword (e.g. wrong: "παράκληση - личная просьба; αίτηση - формальный запрос". correct: "παράκληση - более эмоциональная, личная просьба")
+- For verbs: ALWAYS include the conjugation triplet (present 1st person - aorist 1st person - future with θα)
+- For nouns: ALWAYS include the definite article (ο/η/το) in the back field
+- For adjectives: give masculine, feminine, neuter endings (e.g. "διπλός, -ή, -ό")
+- collocations: 2-4 common phrases/combinations with this word, each with Russian translation in parentheses
+- All Russian text should be natural, not machine-translated

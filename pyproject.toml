@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "greek-anki"
+version = "0.1.0"
+description = "CLI tool for building Greek Anki flashcards with Claude AI"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "rich>=13.0",
+    "genanki>=0.13",
+    "anthropic>=0.39",
+    "python-Levenshtein>=0.25",
+    "zstandard>=0.22",
+    "keyring>=25.0",
+]
+
+[project.scripts]
+greek-anki = "greek_anki.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["greek_anki*"]
