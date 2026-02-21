@@ -71,17 +71,24 @@ def extract_tokens(text: str) -> List[str]:
 def find_note_by_word(word: str, notes) -> "AnkiNote | None":
     """Find a note in a list by fuzzy matching on Back field.
 
-    Uses the same logic as freq_word_in_anki: article stripping,
-    token extraction, exact match, then Levenshtein ≤ 1 for words > 3 chars.
+    Prioritizes exact matches over fuzzy (Levenshtein ≤ 1) matches.
     """
     norm = normalize_greek(word)
+
+    # Pass 1: exact match
     for note in notes:
         tokens = extract_tokens(note.back)
-        for token in tokens:
-            if token == norm:
-                return note
-            if len(norm) > 3 and levenshtein_distance(token, norm) <= 1:
-                return note
+        if norm in tokens:
+            return note
+
+    # Pass 2: fuzzy match (only for words > 3 chars)
+    if len(norm) > 3:
+        for note in notes:
+            tokens = extract_tokens(note.back)
+            for token in tokens:
+                if levenshtein_distance(token, norm) <= 1:
+                    return note
+
     return None
 
 
