@@ -628,7 +628,7 @@ def add_batch(
 )
 def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool, full: bool):
     """Backfill Collocations/Etymology (default) or all fields (--full) for existing cards."""
-    from .claude_generator import generate_card
+    from .card_cache import CardCache, generate_card_cached
 
     console.print(f"Reading APKG: {apkg_path}...")
     notes = read_apkg_notes(apkg_path)
@@ -657,6 +657,7 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
     to_enrich = candidates[:limit]
     console.print(f"  Will enrich {len(to_enrich)} cards\n")
 
+    cache = CardCache("card_cache.sq3")
     enriched_cards = []
     for i, note in enumerate(to_enrich, 1):
         word_clean = re.sub(r"<[^>]+>", "", note.back).strip()
@@ -664,7 +665,7 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
         console.print(f"[bold]\u2500\u2500 [{i}/{len(to_enrich)}] {word_clean} \u2500\u2500[/bold]")
 
         try:
-            card = generate_card(word_clean, model=model)
+            card = generate_card_cached(word_clean, cache, model=model)
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
             continue
@@ -738,7 +739,7 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
       python -m greek_anki refresh αίτηση πρόταση
       python -m greek_anki refresh αίτηση --apkg my_deck.apkg --no-review
     """
-    from .claude_generator import generate_card
+    from .card_cache import CardCache, generate_card_cached
 
     console.print(f"Reading APKG: {apkg}...")
     notes = read_apkg_notes(apkg)
@@ -750,6 +751,7 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
         norm = normalize_greek(re.sub(r"<[^>]+>", "", note.back))
         back_lookup[norm] = note
 
+    cache = CardCache("card_cache.sq3")
     refreshed_cards = []
 
     for i, word in enumerate(words, 1):
@@ -772,7 +774,7 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
         for _attempt in range(3):
             console.print(f"Generating card for [bold]{word_clean}[/bold]...")
             try:
-                card = generate_card(word_clean, model=model)
+                card = generate_card_cached(word_clean, cache, model=model, force=True)
             except Exception as e:
                 console.print(f"[red]Error: {e}[/red]")
                 continue
@@ -1074,3 +1076,52 @@ def export(apkg_path: str, output: str):
             )
 
     console.print(f"[green]Exported {len(notes)} notes to {output}[/green]")
+
+
+@cli.command()
+@click.argument("apkg_path", type=click.Path(exists=True))
+@click.argument("tags", nargs=-1, required=True)
+@click.option("--output", "-o", default=None,
+              help="Output APKG path (default: overwrite input)")
+@click.option("--deck-name", default=None, help="Custom deck name")
+def tag(apkg_path: str, tags: tuple, output: str, deck_name: str):
+    """Add tag(s) to all cards in an APKG file.
+
+    Useful for watermarking decks before sharing.
+
+    \b
+    Examples:
+      python -m greek_anki tag Greek_top_300.apkg my-watermark
+      python -m greek_anki tag deck.apkg shared by-az -o deck_tagged.apkg
+    """
+    from .anki_deck import deck_id_from_name
+
+    console.print(f"Reading APKG: {apkg_path}...")
+    notes = read_apkg_notes(apkg_path)
+    console.print(f"  {len(notes)} notes loaded")
+
+    output_path = output or apkg_path
+    d_name = deck_name or DECK_NAME
+    d_id = deck_id_from_name(d_name) if deck_name else DECK_ID
+
+    model = get_anki_model()
+    deck = genanki.Deck(d_id, d_name)
+
+    for note in notes:
+        merged_tags = list(set(note.tags) | set(tags))
+        n = genanki.Note(
+            model=model,
+            fields=[
+                note.front, note.back, note.example,
+                note.comment, note.collocations, note.etymology,
+            ],
+            tags=merged_tags,
+            guid=note.guid,
+        )
+        deck.add_note(n)
+
+    genanki.Package(deck).write_to_file(str(output_path))
+
+    console.print(f"\n[bold green]Tagged {len(notes)} cards![/bold green]")
+    console.print(f"  Added tags: {', '.join(tags)}")
+    console.print(f"  Output: [cyan]{output_path}[/cyan]")

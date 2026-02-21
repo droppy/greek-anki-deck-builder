@@ -1,4 +1,5 @@
 """Claude API card generation."""
+import html
 import json
 import os
 from dataclasses import dataclass, field
@@ -64,16 +65,16 @@ class GeneratedCard:
         """Convert structured data into HTML fields matching Anki format."""
         # Front field
         self.front = (
-            f"<div>{self.front_ru}</div>"
+            f"<div>{html.escape(self.front_ru)}</div>"
             f"<div><br></div>"
-            f"<div>{self.front_en}</div>"
+            f"<div>{html.escape(self.front_en)}</div>"
         )
 
         # Example field
         example_lines = []
         for ex in self.examples:
             example_lines.append(
-                f"<li><strong>{ex['greek']}</strong> {ex['russian']}</li>"
+                f"<li><strong>{ex['greek']}</strong> {html.escape(ex['russian'])}</li>"
             )
         self.example = "\n".join(example_lines)
 
@@ -81,15 +82,15 @@ class GeneratedCard:
         comment_parts = []
 
         if self.conjugation:
-            comment_parts.append(f"<div>{self.conjugation}</div>")
+            comment_parts.append(f"<div>{html.escape(self.conjugation)}</div>")
             comment_parts.append("<div><br></div>")
 
         if self.synonyms:
             syn_lines = []
             for syn in self.synonyms:
                 syn_lines.append(
-                    f"<li><strong>{syn['word']}</strong>: "
-                    f"{syn['distinction']}</li>"
+                    f"<li><strong>{html.escape(syn['word'])}</strong>: "
+                    f"{html.escape(syn['distinction'])}</li>"
                 )
             comment_parts.append("<div>" + "\n".join(syn_lines) + "</div>")
 
@@ -97,12 +98,12 @@ class GeneratedCard:
 
         # Collocations field
         if self.collocations:
-            colloc_lines = [f"<li><strong>{c}</strong></li>" for c in self.collocations]
+            colloc_lines = [f"<li><strong>{html.escape(c)}</strong></li>" for c in self.collocations]
             self.collocations_html = "".join(colloc_lines)
 
         # Etymology field
         if self.etymology_note:
-            self.etymology_html = f"<em>{self.etymology_note}</em>"
+            self.etymology_html = f"<em>{html.escape(self.etymology_note)}</em>"
 
     def to_note_dict(self) -> dict:
         """Convert to dict suitable for create_supplement_apkg."""

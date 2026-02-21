@@ -53,8 +53,8 @@ clear-key                          # Remove stored API key
 preview WORD [--model M]           # Dry run card generation
 add WORD... [--apkg APKG] [--freq-db DB] [--model M]  # Generate cards, review, write APKG
 add-batch DB APKG -n COUNT [--range S E] [--delay D]  # Batch random pending words from frequency list
-enrich APKG [-n N] [--model M]     # Backfill Collocations/Etymology (default) or all fields (--full)
-refresh WORD... [--apkg APKG]      # Regenerate all fields for existing cards (same GUID)
+enrich APKG [-n N] [--model M]     # Backfill empty fields (default) or all fields (--full)
+refresh WORD... [--apkg APKG]      # Regenerate all fields for existing cards (same GUID), updates cache
 export APKG [-o FILE]              # Export all cards as CSV
 
 # Shareable decks — generate once, assemble any combination
@@ -114,7 +114,8 @@ python -m greek_anki cache-status --freq-db freq_list.sq3 --range 1 5000
 - Tags applied to new cards: `auto-generated`, `added::YYYY-MM`, `pos::TYPE`, `freq::START-END`
 - `add` command: `--apkg` and `--freq-db` are optional; without them it skips duplicate check / frequency tracking
 - `add-batch` command: classic personal workflow — picks random pending words, checks duplicates against APKG, marks processed; for fresh shareable decks use `build-deck --generate-missing` instead
-- Card cache (`card_cache.sq3`): SQLite DB storing generated card JSON by normalized Greek word; avoids redundant API calls across `add`, `add-batch`, and `build-deck`
+- Card cache (`card_cache.sq3`): SQLite DB storing generated card JSON by normalized Greek word; avoids redundant API calls across `add`, `add-batch`, `build-deck`, and `enrich`
 - `build-deck` reads all words in rank range regardless of processed state (excludes only auto-skipped function words); uses deterministic deck ID from deck name
-- `refresh` command: finds existing card by Back field, regenerates all other fields, preserves GUID so Anki overwrites on import
+- `enrich` command: finds cards with any empty field (Example/Comment/Collocations/Etymology), fills only empty fields from cache or API; uses `--no-review` for bulk runs; `--full` overwrites all generated fields; preserves GUID so Anki updates in place
+- `refresh` command: finds existing card by Back field, regenerates all other fields via API (force, bypasses cache), updates cache with new data, preserves GUID so Anki overwrites on import
 - API key stored via `keyring` in Windows Credential Manager (service: `greek-anki`, username: `anthropic-api-key`)
