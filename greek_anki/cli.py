@@ -28,7 +28,7 @@ import genanki
 from .anki_deck import AnkiNote, create_supplement_apkg, get_anki_model, read_apkg_notes
 from .config import DEFAULT_APKG, DEFAULT_CARD_CACHE, DEFAULT_FREQ_DB, DEFAULT_MODEL, DECK_ID, DECK_NAME
 from .freq_list import IN_ANKI, SKIPPED, FreqDB
-from .matcher import freq_word_in_anki, normalize_greek
+from .matcher import find_note_by_word, freq_word_in_anki, normalize_greek
 
 console = Console()
 
@@ -745,12 +745,6 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
     notes = read_apkg_notes(apkg)
     console.print(f"  {len(notes)} notes loaded")
 
-    # Build lookup: normalized Back -> note
-    back_lookup: dict[str, AnkiNote] = {}
-    for note in notes:
-        norm = normalize_greek(re.sub(r"<[^>]+>", "", note.back))
-        back_lookup[norm] = note
-
     cache = CardCache("card_cache.sq3")
     refreshed_cards = []
 
@@ -759,8 +753,7 @@ def refresh(words: tuple, apkg: str, model: str, no_review: bool):
             f"\n[bold]\u2500\u2500 [{i}/{len(words)}] {word} \u2500\u2500[/bold]"
         )
 
-        norm_word = normalize_greek(word)
-        note = back_lookup.get(norm_word)
+        note = find_note_by_word(word, notes)
         if note is None:
             console.print(f"[red]Not found in deck, skipping.[/red]")
             continue

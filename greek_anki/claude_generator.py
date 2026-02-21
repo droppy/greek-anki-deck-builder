@@ -61,6 +61,18 @@ class GeneratedCard:
     # Raw JSON data from Claude (for cache serialization)
     _raw_data: dict = field(default_factory=dict, repr=False)
 
+    @staticmethod
+    def _sanitize_example_greek(text: str) -> str:
+        """Allow only <em>/<em> tags in Greek examples, escape everything else."""
+        import re
+        # Temporarily replace valid <em> and </em> with placeholders
+        text = text.replace("<em>", "\x00EM\x00").replace("</em>", "\x00/EM\x00")
+        # Escape any remaining HTML
+        text = html.escape(text)
+        # Restore <em> tags
+        text = text.replace("\x00EM\x00", "<em>").replace("\x00/EM\x00", "</em>")
+        return text
+
     def render_fields(self):
         """Convert structured data into HTML fields matching Anki format."""
         esc = lambda s: html.escape(s) if s else ""
@@ -76,7 +88,7 @@ class GeneratedCard:
         example_lines = []
         for ex in self.examples:
             example_lines.append(
-                f"<li><strong>{ex.get('greek', '')}</strong> {esc(ex.get('russian', ''))}</li>"
+                f"<li><strong>{self._sanitize_example_greek(ex.get('greek', ''))}</strong> {esc(ex.get('russian', ''))}</li>"
             )
         self.example = "\n".join(example_lines)
 

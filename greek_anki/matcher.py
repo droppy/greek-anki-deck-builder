@@ -56,11 +56,33 @@ def normalize_greek(text: str) -> str:
 def extract_tokens(text: str) -> List[str]:
     """Extract individual word tokens from a potentially multi-word entry.
 
-    Splits on comma and slash, normalizes each token.
+    Splits on comma, slash, and newline, normalizes each token.
     """
-    text = normalize_greek(text)
-    parts = re.split(r"[,/]", text)
-    return [t.strip() for t in parts if t.strip()]
+    # Split on newlines BEFORE normalization (normalize_greek collapses whitespace)
+    lines = re.split(r"[\n\r]+", text)
+    tokens = []
+    for line in lines:
+        norm = normalize_greek(line)
+        parts = re.split(r"[,/]", norm)
+        tokens.extend(t.strip() for t in parts if t.strip())
+    return tokens
+
+
+def find_note_by_word(word: str, notes) -> "AnkiNote | None":
+    """Find a note in a list by fuzzy matching on Back field.
+
+    Uses the same logic as freq_word_in_anki: article stripping,
+    token extraction, exact match, then Levenshtein ≤ 1 for words > 3 chars.
+    """
+    norm = normalize_greek(word)
+    for note in notes:
+        tokens = extract_tokens(note.back)
+        for token in tokens:
+            if token == norm:
+                return note
+            if len(norm) > 3 and levenshtein_distance(token, norm) <= 1:
+                return note
+    return None
 
 
 def freq_word_in_anki(freq_word: str, anki_back_fields: List[str]) -> bool:
@@ -80,7 +102,7 @@ def freq_word_in_anki(freq_word: str, anki_back_fields: List[str]) -> bool:
         for token in tokens:
             if token == freq_normalized:
                 return True
-            if levenshtein_distance(token, freq_normalized) <= 1:
+            if len(freq_normalized) > 3 and levenshtein_distance(token, freq_normalized) <= 1:
                 return True
 
     return False
