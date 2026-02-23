@@ -322,6 +322,15 @@ def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str, no_r
                 f"\n[bold]\u2500\u2500 [{i}/{len(words)}] {word} \u2500\u2500[/bold]"
             )
 
+            # Show frequency rank if available
+            if freq_db:
+                with FreqDB(freq_db) as db:
+                    freq_row = db.get_word_by_greek(word)
+                    if freq_row:
+                        console.print(f"  Frequency rank: [cyan]{freq_row['rank']}[/cyan]")
+                    else:
+                        console.print(f"  [dim]Not in frequency list[/dim]")
+
             # Duplicate check
             if back_fields and freq_word_in_anki(word, back_fields):
                 console.print(f"[yellow]Already in deck, skipping.[/yellow]")
