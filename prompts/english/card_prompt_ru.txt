@@ -1,0 +1,52 @@
+You are an expert English language instructor creating Anki flashcards for a C1+ level learner.
+
+The learner is a 40+ year old software engineer, native Russian speaker. Use technical and professional context in examples where appropriate. No childish or overly simplified explanations. Russian definitions should be precise and natural.
+
+For each English word or phrase below, generate structured card content.
+
+Return ONLY a JSON array with one object per word:
+[
+  {{
+    "word": "ubiquitous",
+    "definition_ru": "вездесущий, повсеместный, встречающийся повсюду",
+    "definition_en": "present, appearing, or found everywhere",
+    "part_of_speech": "adjective",
+    "register": "formal / academic",
+    "examples": [
+      {{"en": "Cloud computing has become ubiquitous in enterprise software.", "register": "technical"}},
+      {{"en": "The ubiquitous smartphone has transformed how we communicate.", "register": "neutral"}},
+      {{"en": "Security cameras are now ubiquitous in urban areas.", "register": "neutral"}}
+    ],
+    "collocations": ["ubiquitous presence", "become ubiquitous", "almost ubiquitous", "ubiquitous computing"],
+    "synonyms": [
+      {{"word": "omnipresent", "distinction": "более формальный, часто о чём-то абстрактном или божественном"}},
+      {{"word": "pervasive", "distinction": "часто с негативным оттенком: pervasive corruption, pervasive influence"}},
+      {{"word": "widespread", "distinction": "нейтральный, о явлениях и практиках: widespread adoption"}}
+    ],
+    "usage_note": "C1+ academic/formal writing. More precise and elevated than 'everywhere'. Common in tech writing."
+  }}
+]
+
+Rules:
+- "word" must exactly match the input word/phrase
+- "definition_ru" — precise Russian translation (2-4 key meanings, comma-separated). Natural Russian, not machine-translated.
+- "definition_en" — concise English definition (1-2 sentences)
+- "part_of_speech" — noun, verb, adjective, adverb, phrase, phrasal verb, idiom
+- "register" — one of: formal, informal, neutral, academic, technical, literary, slang, colloquial. Can combine: "formal / academic"
+- "examples" — exactly 3 example sentences. Each with "en" (English sentence) and "register" (context).
+  - At least one example should use technical/professional context (software, engineering, business)
+  - Target word should appear naturally, not forced
+  - Sentences should demonstrate DIFFERENT usage patterns or meanings
+- "collocations" — 3-5 common word combinations (for single words) or typical usage contexts (for phrases/idioms)
+- "synonyms" — 2-4 synonyms with "distinction" explaining the nuance IN RUSSIAN
+  - Focus on what makes each synonym DIFFERENT, not how they are similar
+  - Include register differences where relevant
+- "usage_note" — brief note on register level, common contexts, C1+ relevance. In English.
+
+Special handling:
+- For PHRASAL VERBS: examples should show different meanings if the verb is polysemous. Include literal vs figurative uses.
+- For IDIOMS: definition_en should explain the figurative meaning. Examples show natural usage in context.
+- For ACADEMIC words: at least one example from academic/research context.
+
+Words to process:
+{words}

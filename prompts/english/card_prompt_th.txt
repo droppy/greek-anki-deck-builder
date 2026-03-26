@@ -1,0 +1,70 @@
+You are an expert English language instructor creating Anki flashcards for a C1+ level Thai native speaker.
+
+The learner is an educated adult professional. Thai definitions must be in Thai script (อักษรไทย), NOT romanization. The learner is comfortable with code-switching between Thai and English.
+
+Key challenges for Thai speakers learning English at C1+:
+- No article system in Thai — explicitly note when a/an/the usage matters for a word
+- No verb conjugation in Thai — highlight irregular forms and tense patterns
+- Thai lacks final consonant clusters — include IPA pronunciation for difficult words
+- Collocation errors from Thai transfer (e.g., "open the light" → "turn on the light", "eat medicine" → "take medicine") — flag these when relevant
+- Thai has 5+ speech register levels; English register is subtler — make register labels clear
+- No cognates with English (unlike European languages) — morphological breakdown helps
+- Western cultural references in idioms may be unfamiliar — add cultural context notes
+
+For each English word or phrase below, generate structured card content.
+
+Return ONLY a JSON array with one object per word:
+[
+  {{
+    "word": "ubiquitous",
+    "definition_th": "แพร่หลาย, มีอยู่ทุกหนทุกแห่ง, พบเห็นได้ทั่วไป",
+    "definition_en": "present, appearing, or found everywhere",
+    "pronunciation": "/juːˈbɪk.wɪ.təs/",
+    "part_of_speech": "adjective",
+    "register": "formal / academic",
+    "examples": [
+      {{"en": "Cloud computing has become ubiquitous in enterprise software.", "register": "technical"}},
+      {{"en": "The ubiquitous smartphone has transformed how we communicate.", "register": "neutral"}},
+      {{"en": "Security cameras are now ubiquitous in urban areas.", "register": "neutral"}}
+    ],
+    "collocations": ["ubiquitous presence", "become ubiquitous", "almost ubiquitous", "ubiquitous computing"],
+    "synonyms": [
+      {{"word": "omnipresent", "distinction": "ทางการมากกว่า มักใช้ในบริบทเชิงนามธรรมหรือศาสนา"}},
+      {{"word": "pervasive", "distinction": "มักมีความหมายเชิงลบ เช่น pervasive corruption, pervasive influence"}},
+      {{"word": "widespread", "distinction": "เป็นกลางกว่า ใช้กับปรากฏการณ์ทั่วไป เช่น widespread adoption"}}
+    ],
+    "morphology": "ubiquit- (Latin: everywhere) + -ous (adjective suffix)",
+    "thai_trap": "",
+    "cultural_note": "",
+    "usage_note": "C1+ academic/formal writing. More precise and elevated than 'everywhere'. Common in tech writing."
+  }}
+]
+
+Rules:
+- "word" must exactly match the input word/phrase
+- "definition_th" — precise Thai translation in Thai script (อักษรไทย). 2-4 key meanings, comma-separated. Natural Thai, not machine-translated. Use Thai that an educated adult would use.
+- "definition_en" — concise English definition (1-2 sentences)
+- "pronunciation" — IPA transcription. Essential for Thai speakers who struggle with /θ/, /ð/, /v/, /z/, /ʃ/, final clusters. Always include stress marking.
+- "part_of_speech" — noun, verb, adjective, adverb, phrase, phrasal verb, idiom
+- "register" — one of: formal, informal, neutral, academic, technical, literary, slang, colloquial. Can combine: "formal / academic"
+- "examples" — exactly 3 example sentences. Each with "en" (English sentence) and "register" (context).
+  - At least one example should use professional/business context
+  - Target word should appear naturally, not forced
+  - Sentences should demonstrate DIFFERENT usage patterns or meanings
+- "collocations" — 3-5 common word combinations. This is CRITICAL for Thai learners since Thai-English collocational transfer causes many errors.
+- "synonyms" — 2-4 synonyms with "distinction" explaining the nuance IN THAI (Thai script)
+  - Focus on what makes each synonym DIFFERENT, not how they are similar
+  - Include register differences where relevant
+- "morphology" — break down the word into prefix + root + suffix with brief meaning of each part. Thai has minimal derivational morphology, so this helps learners decode unfamiliar words. Leave empty for simple/short words.
+- "thai_trap" — common error Thai speakers make with this word. E.g., "Don't say 'I play computer' — say 'I use the computer'" or "Don't confuse with 'effective' (ได้ผล) — 'efficient' means doing it with less waste". Leave empty if no common Thai-specific error.
+- "cultural_note" — if the word/idiom references Western culture, sports, history, or literature that Thai speakers may not know, add a brief explanation. E.g., for "Achilles' heel": "From Greek mythology — Achilles was a warrior whose only weak point was his heel." Leave empty if not needed.
+- "usage_note" — brief note on register level, common contexts, C1+ relevance. In English.
+
+Special handling:
+- For PHRASAL VERBS: examples should show different meanings if the verb is polysemous. Include literal vs figurative uses. Thai speakers find phrasal verbs exceptionally difficult — provide clear collocational patterns.
+- For IDIOMS: definition_en should explain the figurative meaning. "cultural_note" should explain the cultural origin if it's Western-specific. Examples show natural usage in context.
+- For ACADEMIC words: include "morphology" breakdown. At least one example from academic/research context.
+- For words with /θ/, /ð/, /v/, /z/, or final clusters: the "pronunciation" field is especially important. Add a note in "thai_trap" if Thai speakers commonly mispronounce this word.
+
+Words to process:
+{words}

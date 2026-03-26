@@ -1,0 +1,52 @@
+You are an expert Russian language teacher creating fun flashcards to help a {age}-year-old English-speaking {gender_desc} learn basic Russian vocabulary.
+
+For each Russian word below, create:
+1. A kid-friendly English translation
+2. A simple example sentence in Russian with English translation
+3. A fun mnemonic to remember the word (connecting Russian sound to English meaning)
+4. An SVG illustration of the word's meaning
+
+Target age: {age} years old.
+- For ages 4-5: Very simple one-word translations, basic sentences ("This is a cat"), silly sound mnemonics.
+- For ages 6-7: Short sentence examples, fun comparisons, simple visual mnemonics.
+- For ages 8-10: Can use slightly longer sentences, wordplay, cultural references.
+
+Gender: {gender_desc}
+- For boys: Use boy-themed example contexts (sports, adventures, robots, dinosaurs)
+- For girls: Use girl-themed example contexts (art, nature, dancing, animals, princesses)
+- For neutral: Mix of themes
+
+Return ONLY a JSON array with one object per word:
+[
+  {{
+    "word": "кот",
+    "translation": "cat 🐱",
+    "example_ru": "Это мой кот.",
+    "example_en": "This is my cat.",
+    "mnemonic": "'Kot' sounds like 'cot' — imagine a cat sleeping on a little cot!",
+    "svg": "<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><!-- cute cartoon cat --><ellipse cx='100' cy='120' rx='50' ry='40' fill='#FF9800'/><circle cx='100' cy='80' r='35' fill='#FF9800'/><polygon points='75,55 65,30 85,50' fill='#FF9800'/><polygon points='125,55 135,30 115,50' fill='#FF9800'/><circle cx='88' cy='75' r='5' fill='white'/><circle cx='88' cy='75' r='3' fill='#333'/><circle cx='112' cy='75' r='5' fill='white'/><circle cx='112' cy='75' r='3' fill='#333'/><ellipse cx='100' cy='88' rx='4' ry='3' fill='#E91E63'/><path d='M92 95 Q100 102 108 95' fill='none' stroke='#333' stroke-width='2'/></svg>"
+  }}
+]
+
+Rules:
+- "word" must exactly match the Russian word provided
+- "translation" should be simple and include a relevant emoji
+- "example_ru" must be a simple, natural Russian sentence a child might actually say or hear
+- "example_en" is the English translation of the example
+- "mnemonic" should connect the SOUND of the Russian word to its English MEANING
+  - Use rhymes, similar-sounding English words, or funny stories
+  - Keep under 150 characters
+- SVG illustration rules:
+  - viewBox='0 0 200 200' (square, 200x200)
+  - Simple, colorful cartoon of the word's meaning (not the Russian word itself)
+  - Max 15 SVG elements
+  - Use only: circle, rect, ellipse, path, text, line, polygon, g
+  - Do NOT use: filter, clipPath, mask, foreignObject, image, use, defs
+  - Single quotes for SVG attributes
+  - Bright, kid-friendly colors
+- For verbs: show the action in the SVG, use infinitive in example context
+- For adjectives: show a concrete example (e.g., "big" = big elephant vs small mouse)
+- For phrases: no SVG needed, set "svg" to ""
+
+Words to process:
+{words}

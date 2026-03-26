@@ -1,0 +1,57 @@
+You are an expert language teacher creating fun, memorable flashcards to help a {age}-year-old English-speaking {gender_desc} learn the Russian Cyrillic alphabet.
+
+For each Russian letter below, create:
+1. A mnemonic to remember the letter's shape and sound
+2. A pronunciation tip connecting to English sounds
+3. A fun fact or memory trick
+4. An SVG illustration that helps the child remember the letter through a visual mnemonic
+
+Target age: {age} years old.
+- For ages 4-5: Very simple language, focus on shapes ("looks like..."), animal comparisons, silly sounds. Short sentences only.
+- For ages 6-7: Can understand "sounds like..." comparisons, simple rhymes, fun character stories.
+- For ages 8-10: Can handle more detailed explanations, word origins, pattern recognition between letters.
+
+Gender: {gender_desc}
+- For boys: Use examples with dinosaurs, rockets, robots, sports, adventures, cars, pirates
+- For girls: Use examples with unicorns, fairies, dancing, art, nature, princesses, animals
+- For neutral: Mix of all themes, animals, nature, food, space, music
+
+Return ONLY a JSON array with one object per letter:
+[
+  {{
+    "letter": "А",
+    "mnemonic": "А looks just like the English letter A! It even sounds similar — say 'Ahh' like when a doctor checks your throat!",
+    "sound_tip": "Say 'ah' like in 'father' — open your mouth wide!",
+    "fun_fact": "А is the first letter in both English AND Russian! They're alphabet twins! 👯",
+    "example_word": "арбуз (ar-BOOZ)",
+    "example_translation": "watermelon 🍉",
+    "svg": "<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><!-- A cute watermelon with the letter А visible --><circle cx='100' cy='90' r='60' fill='#4CAF50' stroke='#2E7D32' stroke-width='3'/><path d='M40 90 Q100 180 160 90' fill='#E53935'/><text x='100' y='95' text-anchor='middle' font-size='50' font-weight='bold' fill='white' font-family='Comic Sans MS, cursive'>А</text><circle cx='80' cy='75' r='6' fill='white'/><circle cx='80' cy='75' r='3' fill='#333'/><circle cx='120' cy='75' r='6' fill='white'/><circle cx='120' cy='75' r='3' fill='#333'/><path d='M88 100 Q100 112 112 100' fill='none' stroke='#333' stroke-width='2'/></svg>"
+  }}
+]
+
+Rules:
+- The "letter" field must be the uppercase Cyrillic letter
+- Mnemonics should connect the letter SHAPE to something the child knows (English letters, objects, animals)
+- Sound tips should reference English words the child already knows
+- For letters that look like English letters but sound different (В=V, Н=N, Р=R, С=S, Х=kh), emphasize the "tricky friend" concept
+- Fun facts should be short, engaging, and memorable
+- example_word format: "Russian (transliteration)" — pick simple, concrete, kid-friendly words
+- example_translation: English meaning with a relevant emoji
+- SVG illustration rules:
+  - Must use viewBox='0 0 200 200' (square, 200x200)
+  - The Cyrillic letter MUST appear prominently in the SVG (as a <text> element, font-size 40-60)
+  - Include a simple, colorful cartoon illustration that connects to the mnemonic story
+  - Use bright, friendly colors appropriate for children
+  - Keep it simple: max 15 SVG elements (circles, rects, paths, text)
+  - Use only basic SVG elements: circle, rect, ellipse, path, text, line, polygon, g
+  - Do NOT use: filter, clipPath, mask, foreignObject, image, use, defs, or any embedded images/URLs
+  - All text must use font-family='Comic Sans MS, cursive'
+  - Use single quotes for all SVG attributes (the JSON string uses double quotes)
+  - Must be valid SVG that renders correctly in Anki (a Qt WebEngine browser)
+  - Make the illustration age-appropriate and fun
+- Keep mnemonic under 200 characters
+- Keep sound_tip under 100 characters
+- Keep fun_fact under 120 characters
+
+Letters to process:
+{letters}

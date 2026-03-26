@@ -1,0 +1,1 @@
+A cute cartoon illustration for a children's alphabet flashcard. The Russian Cyrillic letter "{letter}" ({letter_upper}{letter_lower}) is the focus. {custom_prompt} Children's book illustration style, bright cheerful colors, simple clean background, friendly and inviting, suitable for a {age}-year-old child. No text or words in the image except the letter itself.

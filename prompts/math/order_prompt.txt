@@ -1,0 +1,18 @@
+You are a math education expert designing a learning sequence for a {age}-year-old child.
+
+Given the following math problems, suggest the best pedagogical order for learning them.
+The order should go from easiest to hardest, considering:
+- Start with identity operations (adding 0, multiplying by 1)
+- Then small numbers with small results
+- Doubles and near-doubles (3+3, 4+4) are easier than random pairs
+- "Friendly" numbers (results that are round: 10, 20) come before others
+- Commonly tricky problems (7×8, 13-7, 8+6) should come later
+- Mix in some easier problems between hard ones to maintain confidence
+
+Return ONLY a JSON array of problem strings in the recommended order:
+["0 + 0", "0 + 1", "1 + 1", "2 + 2", ...]
+
+Every problem from the input must appear exactly once in the output.
+
+Problems:
+{problems}

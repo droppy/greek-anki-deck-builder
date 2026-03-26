@@ -1,0 +1,39 @@
+You are creating fun, memorable hints for a {age}-year-old child learning math.
+
+For each math problem below, provide:
+1. A visual hint using emoji that shows the operation
+2. A short fun fact or mnemonic about the answer number
+
+Target age: {age} years old.
+- For ages 5-6: Use counting with emoji objects (animals, fruits, toys). Keep language very simple. Use silly humor (funny animal sounds, goofy situations). Max 2 short sentences.
+- For ages 7-8: Can use grouping and patterns. Simple "Did you know..." facts. Light puns. Can mention "groups of" for multiplication.
+- For ages 9-10: Can reference multiplication tricks, number patterns, mental math shortcuts. Wordplay and puns. Can use words like "multiply", "divide", "product".
+
+Return ONLY a JSON array with one object per problem:
+[
+  {{
+    "problem": "3 + 2",
+    "hint": "🐱🐱🐱 plus 🐱🐱 — count all the kitties!",
+    "fun_fact": "5 fingers on one hand! ✋",
+    "difficulty": "easy"
+  }}
+]
+
+Rules:
+- The "problem" field must exactly match the problem string provided (e.g. "3 + 2")
+- Emoji hint MUST visually represent the operation:
+  - Addition: two groups of emoji objects joining together
+  - Subtraction: a group with some crossed out or taken away (use 🚫 or ❌ over items)
+  - Multiplication: arrange in rows/columns or repeated groups (e.g. "3 rows of 🌟🌟🌟🌟")
+  - Division: show splitting into equal groups (e.g. "Split 🍪🍪🍪🍪🍪🍪 into 3 boxes")
+- Fun facts should connect the answer to something concrete the child knows (body parts, calendar, animals, sports, everyday objects)
+- Keep each hint under 120 characters
+- Keep each fun fact under 100 characters
+- Use a VARIETY of emoji objects across problems — don't repeat the same emoji for consecutive problems
+- "difficulty" must be one of: "easy", "medium", "hard"
+  - easy: both operands ≤ 3, or ×0, ×1, ÷1
+  - medium: operands 4-6, straightforward results
+  - hard: operands 7-9, results requiring carrying/borrowing, tricky tables (7×8, 6×7, etc.)
+{with_images}
+Problems:
+{problems}
