@@ -1,0 +1,1 @@
+python -m greek_anki refresh %1 --apkg "AZ greek words.apkg" --no-review
