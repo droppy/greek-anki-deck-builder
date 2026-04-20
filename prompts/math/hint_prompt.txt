@@ -26,9 +26,17 @@ Rules:
   - Subtraction: a group with some crossed out or taken away (use 🚫 or ❌ over items)
   - Multiplication: arrange in rows/columns or repeated groups (e.g. "3 rows of 🌟🌟🌟🌟")
   - Division: show splitting into equal groups (e.g. "Split 🍪🍪🍪🍪🍪🍪 into 3 boxes")
-- Fun facts should connect the answer to something concrete the child knows (body parts, calendar, animals, sports, everyday objects)
+- Fun facts should connect the answer to real-world knowledge that makes the number memorable and educational. Rotate across these categories:
+  - 🔬 Science & nature: "Octopuses have 3 hearts!", "A rainbow has 7 colors 🌈", "Water freezes at 0°C ❄️"
+  - 🐾 Animals: "Spiders have 8 legs 🕷️", "Cats have 18 toes total! 🐱"
+  - 💄 Beauty & fashion: "Nails grow ~3mm per month 💅", "There are 7 skin layers!"
+  - 🌍 Geography & space: "Earth has 7 continents 🌍", "Mars has 2 moons! 🔴"
+  - 🎨 Art & crafts: "There are 3 primary colors 🎨", "A hexagon has 6 sides"
+  - 🍳 Cooking & food: "A recipe needs exactly 3 eggs for pancakes 🥞"
+  - 🏗️ How things work: "A bicycle has 2 wheels 🚲", "A piano has 88 keys 🎹"
+  Prefer surprising, "wow, I didn't know that!" facts over obvious ones. Make the child want to share the fact with friends.
 - Keep each hint under 120 characters
-- Keep each fun fact under 100 characters
+- Keep each fun fact under 120 characters
 - Use a VARIETY of emoji objects across problems — don't repeat the same emoji for consecutive problems
 - "difficulty" must be one of: "easy", "medium", "hard"
   - easy: both operands ≤ 3, or ×0, ×1, ÷1

@@ -15,6 +15,7 @@ class MathProblem:
     answer: int
     level: int
     position: int = 0  # Controls Anki new-card ordering
+    has_mirror: bool = False  # True when a!=b for commutative ops (+, *)
 
     @property
     def key(self) -> str:
@@ -25,27 +26,52 @@ class MathProblem:
     def display(self) -> str:
         """Human-readable display, e.g., '7 + 5 = ?'."""
         sym = OP_SYMBOLS.get(self.op, self.op)
-        return f"{self.a} {sym} {self.b} = ?"
+        line1 = f"{self.a} {sym} {self.b} = ?"
+        if self.has_mirror:
+            line2 = f"{self.b} {sym} {self.a} = ?"
+            return f"{line1}\n{line2}"
+        return line1
 
     @property
     def display_no_question(self) -> str:
         """Display without '= ?', e.g., '7 + 5'."""
         sym = OP_SYMBOLS.get(self.op, self.op)
-        return f"{self.a} {sym} {self.b}"
+        line1 = f"{self.a} {sym} {self.b}"
+        if self.has_mirror:
+            line2 = f"{self.b} {sym} {self.a}"
+            return f"{line1}\n{line2}"
+        return line1
 
     @property
     def problem_html(self) -> str:
         """Problem with operation-specific color as inline style."""
         color = OP_COLORS.get(self.op, "#2c3e50")
-        return f'<span style="color:{color}">{self.display}</span>'
+        sym = OP_SYMBOLS.get(self.op, self.op)
+        line1 = f"{self.a} {sym} {self.b} = ?"
+        if self.has_mirror:
+            line2 = f"{self.b} {sym} {self.a} = ?"
+            return (
+                f'<span style="color:{color}">{line1}</span>'
+                f"<br>"
+                f'<span style="color:{color}">{line2}</span>'
+            )
+        return f'<span style="color:{color}">{line1}</span>'
 
 
 def _generate_addition(a_range: tuple, b_range: tuple) -> List[MathProblem]:
-    """Generate all addition problems for given ranges."""
+    """Generate addition problems, combining commutative pairs on one card."""
     problems = []
+    seen = set()
     for a in range(a_range[0], a_range[1] + 1):
         for b in range(b_range[0], b_range[1] + 1):
-            problems.append(MathProblem(a=a, b=b, op="+", answer=a + b, level=0))
+            canonical = (min(a, b), max(a, b))
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            problems.append(MathProblem(
+                a=a, b=b, op="+", answer=a + b, level=0,
+                has_mirror=(a != b),
+            ))
     return problems
 
 
@@ -62,11 +88,19 @@ def _generate_subtraction(a_range: tuple, b_range: tuple) -> List[MathProblem]:
 
 
 def _generate_multiplication(a_range: tuple, b_range: tuple) -> List[MathProblem]:
-    """Generate all multiplication problems for given ranges."""
+    """Generate multiplication problems, combining commutative pairs on one card."""
     problems = []
+    seen = set()
     for a in range(a_range[0], a_range[1] + 1):
         for b in range(b_range[0], b_range[1] + 1):
-            problems.append(MathProblem(a=a, b=b, op="*", answer=a * b, level=0))
+            canonical = (min(a, b), max(a, b))
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            problems.append(MathProblem(
+                a=a, b=b, op="*", answer=a * b, level=0,
+                has_mirror=(a != b),
+            ))
     return problems
 
 

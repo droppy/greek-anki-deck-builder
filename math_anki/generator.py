@@ -101,8 +101,9 @@ def generate_hints_batch(
     template = _load_template(HINT_PROMPT_PATH)
 
     # Format problems as JSON list
+    # For mirror problems, send the primary form (first line) to Claude
     problems_json = json.dumps(
-        [{"problem": p.display_no_question, "answer": p.answer} for p in problems],
+        [{"problem": p.display_no_question.split("\n")[0], "answer": p.answer} for p in problems],
         ensure_ascii=False,
     )
 
@@ -175,8 +176,8 @@ def generate_hints(
             batch, age, model=model, api_key=api_key, with_images=with_images
         )
 
-        # Match results back to problems by problem display string
-        display_to_problem = {p.display_no_question: p for p in batch}
+        # Match results back to problems by primary display string (first line)
+        display_to_problem = {p.display_no_question.split("\n")[0]: p for p in batch}
         for item in results:
             problem_str = item.get("problem", "")
             prob = display_to_problem.get(problem_str)
