@@ -1,6 +1,7 @@
 """Click CLI for math Anki deck generator."""
 import os
 import sys
+from datetime import datetime
 
 # Fix Windows console encoding for Unicode
 if sys.platform == "win32":
@@ -225,6 +226,7 @@ def build_deck_cmd(level, age, deck_name, output, cache_db, generate_missing, mo
         tags = [
             "auto-generated",
             f"age::{age}",
+            f"built::{datetime.now().strftime('%Y-%m-%d')}",
         ]
 
         result_path = build_apkg(
