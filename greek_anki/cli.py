@@ -651,7 +651,6 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
     console.print(f"[dim][{_ts()}][/dim]   Loaded {len(notes)} notes")
 
     # Map AnkiNote field name \u2192 corresponding GeneratedCard rendered attribute.
-    # Used both for filtering and for detecting when the cache can't fill a gap.
     enrich_fields = [
         ("Example", "example", "example"),
         ("Comment", "comment", "comment"),
@@ -659,15 +658,44 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
         ("Etymology", "etymology", "etymology_html"),
     ]
 
+    # Only Comment has a legitimate "intentionally empty" case: numbers,
+    # interjections, and other words with no conjugation AND no synonyms
+    # (Comment is built from those two). If both keys are present in the cache
+    # _raw_data the API was asked under the current schema and confirmed empty
+    # \u2014 re-asking would waste tokens.
+    #
+    # Example / Collocations / Etymology are NOT in this map: most Greek words
+    # have all three, so an empty cached value is treated as stale and worth
+    # a regen.
+    schema_keys_for_field = {
+        "Comment": ("conjugation", "synonyms"),
+    }
+
     def empty_fields_of(note):
         return [label for label, attr, _ in enrich_fields if not getattr(note, attr).strip()]
 
-    def fields_cache_cannot_fill(note, card):
-        """Fields that are empty in the note AND empty on the generated card."""
-        return [
-            label for label, attr, card_attr in enrich_fields
-            if not getattr(note, attr).strip() and not getattr(card, card_attr).strip()
-        ]
+    def categorize_empty_fields(note, card):
+        """Sort each empty-in-note field into one of three buckets:
+
+        - fillable_from_cache: cache rendered content for this field
+        - needs_regen: cache is empty AND missing schema keys (stale entry)
+        - intentionally_empty: cache is empty BUT schema keys are present
+                               (the API was asked and said "no content")
+        """
+        raw = getattr(card, "_raw_data", None) or {}
+        fillable, regen, intentional = [], [], []
+        for label, attr, card_attr in enrich_fields:
+            if getattr(note, attr).strip():
+                continue
+            if getattr(card, card_attr).strip():
+                fillable.append(label)
+                continue
+            keys = schema_keys_for_field.get(label, ())
+            if keys and all(k in raw for k in keys):
+                intentional.append(label)
+            else:
+                regen.append(label)
+        return fillable, regen, intentional
 
     if full:
         # Original mode: find cards with no Example AND no Comment
@@ -705,12 +733,6 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
         word_clean = re.sub(r"<[^>]+>", "", note.back).strip()
 
         console.print(f"[dim][{_ts()}][/dim] [bold]\u2500\u2500 [{i}/{len(to_enrich)}] {word_clean} \u2500\u2500[/bold]")
-        if not full:
-            empty = empty_fields_of(note)
-            console.print(
-                f"[dim][{_ts()}][/dim]   Empty fields to fill: "
-                f"[yellow]{', '.join(empty) or '(none)'}[/yellow]"
-            )
 
         # Probe the cache directly so we can distinguish a silent cache MISS
         # (note.back format doesn't match any cached normalized key \u2014 triggers
@@ -745,14 +767,27 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
                 f"[dim][{_ts()}][/dim]   [green]API responded in {elapsed_call:.1f}s[/green]"
             )
 
-        # If the cached entry exists but lacks the fields this note needs,
-        # force a fresh API call so the new content can fill the gap.
-        if not full and not api_called:
-            unfillable = fields_cache_cannot_fill(note, card)
-            if unfillable:
+        # Categorize the note's empty fields against the (possibly cached) card.
+        if not full:
+            fillable, needs_regen, intentional = categorize_empty_fields(note, card)
+            will_attempt = fillable + needs_regen
+            console.print(
+                f"[dim][{_ts()}][/dim]   Empty fields to fill: "
+                f"[yellow]{', '.join(will_attempt) or '(none)'}[/yellow]"
+            )
+            if intentional:
                 console.print(
-                    f"[dim][{_ts()}][/dim]   [dim]Cache cannot fill "
-                    f"{', '.join(unfillable)}; regenerating from API...[/dim]"
+                    f"[dim][{_ts()}][/dim]   [dim](skipping {', '.join(intentional)} \u2014 "
+                    f"the API was asked and confirmed no content for this word)[/dim]"
+                )
+
+            # Only force a regen for STALE-cache fields. Intentional empties
+            # (schema keys present, value empty) get left alone \u2014 re-asking the
+            # API for them would just waste tokens and time.
+            if needs_regen and not api_called:
+                console.print(
+                    f"[dim][{_ts()}][/dim]   [dim]Cache is stale for "
+                    f"{', '.join(needs_regen)}; regenerating from API...[/dim]"
                 )
                 api_start = time.perf_counter()
                 try:
@@ -768,13 +803,20 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
                 console.print(
                     f"[dim][{_ts()}][/dim]   [green]API responded in {elapsed_call:.1f}s[/green]"
                 )
-                still_unfillable = fields_cache_cannot_fill(note, card)
-                if still_unfillable:
+                # Recategorize against the fresh card. Anything in `still_regen`
+                # would be a malformed API response (current-schema keys missing).
+                _, still_regen, post_intentional = categorize_empty_fields(note, card)
+                if post_intentional:
                     console.print(
-                        f"[dim][{_ts()}][/dim]   [yellow]API also returned empty "
-                        f"{', '.join(still_unfillable)}; those fields will stay empty.[/yellow]"
+                        f"[dim][{_ts()}][/dim]   [dim](API confirmed no content "
+                        f"for {', '.join(post_intentional)})[/dim]"
                     )
-                    skipped_unfillable.append((word_clean, still_unfillable))
+                if still_regen:
+                    console.print(
+                        f"[dim][{_ts()}][/dim]   [yellow]API response missing schema "
+                        f"keys for {', '.join(still_regen)}; those fields will stay empty.[/yellow]"
+                    )
+                    skipped_unfillable.append((word_clean, still_regen))
 
         if not no_review:
             _display_card_preview(card)
