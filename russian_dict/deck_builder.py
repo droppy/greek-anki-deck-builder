@@ -1,6 +1,7 @@
 """Assemble Russian vocabulary cards into an Anki APKG deck with images."""
 import hashlib
 import html
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -12,6 +13,23 @@ from .config import (
     CARD_CSS, DEFAULT_IMAGE_DIR, FIELDS,
 )
 from .vocabulary import RussianWord
+
+
+_UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\s,]+')
+
+
+def _safe_image_key(word_key: str) -> str:
+    """Build a filesystem-safe image key from a word key.
+
+    Word keys may contain slashes, spaces, commas, question marks
+    (e.g. grammar cards 'большой / большая / большое / большие',
+    phrases 'как дела?'). Sanitize them so they cannot escape the
+    image directory. Long keys are hashed to keep paths under MAX_PATH.
+    """
+    safe = _UNSAFE_FILENAME_CHARS.sub("_", word_key.strip()).strip("_")
+    if len(safe) > 80:
+        safe = safe[:60] + "_" + hashlib.md5(word_key.encode("utf-8")).hexdigest()[:8]
+    return f"word_{safe}"
 
 
 def deck_id_from_name(name: str) -> int:
@@ -54,7 +72,7 @@ def _render_svgs(words, cached_data, image_dir, progress_callback=None):
             continue
         if c.get("image_path") and Path(c["image_path"]).exists():
             continue
-        items.append({"key": f"word_{w.key}", "svg": c["svg_content"]})
+        items.append({"key": _safe_image_key(w.key), "svg": c["svg_content"]})
 
     if not items:
         return {}
@@ -94,7 +112,7 @@ def build_note_data(word: RussianWord, cached: Optional[dict],
             visual_html = f'<img src="{esc(p.name)}">'
             image_file = p
 
-        img_key = f"word_{word.key}"
+        img_key = _safe_image_key(word.key)
         if not visual_html and rendered_images and img_key in rendered_images:
             p = rendered_images[img_key]
             if p.exists():

@@ -122,11 +122,15 @@ LEVELS = {
         "b_range": (0, 9),
     },
     4: {
-        "name": "Multiplication tables",
-        "description": "Single-digit multiplication (0-9 \u00d7 0-9)",
+        "name": "Basic multiplication",
+        "description": "Multiplication 1\u20135 \u00d7 1\u20135, plus 6\u00d76 and 7\u00d77",
         "ops": ["*"],
-        "a_range": (0, 9),
-        "b_range": (0, 9),
+        # Explicit pairs (canonical form). Easier starter set for 1st-graders:
+        # bigger products (8\u00d79, 7\u00d78, \u2026) are deferred to level 9.
+        "pairs": (
+            [(a, b) for a in range(1, 6) for b in range(a, 6)]
+            + [(6, 6), (7, 7)]
+        ),
     },
     5: {
         "name": "Exact division",
@@ -154,6 +158,13 @@ LEVELS = {
         "description": "All four operations with single and two-digit numbers",
         "ops": ["+", "-", "*", "/"],
         "a_range": (0, 19),
+        "b_range": (1, 9),
+    },
+    9: {
+        "name": "Multiplication tables (full)",
+        "description": "Full single-digit multiplication (1\u20139 \u00d7 1\u20139)",
+        "ops": ["*"],
+        "a_range": (1, 9),
         "b_range": (1, 9),
     },
 }

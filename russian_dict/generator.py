@@ -11,6 +11,7 @@ from anthropic import Anthropic
 
 from .cache import DictCache
 from .config import DEFAULT_MODEL, WORD_PROMPT_PATH
+from .grammar_presets import GRAMMAR_PRESETS
 from .vocabulary import RussianWord
 
 KEYRING_SERVICE = "greek-anki"
@@ -109,8 +110,30 @@ def generate_words(
     cached = cache.get_batch([w.russian for w in words], age, gender)
     uncached = [w for w in words if w.key not in cached]
 
+    # Grammar concept cards: hand-written content from GRAMMAR_PRESETS,
+    # no API call needed. Skip to ensure precise rule explanations + diagrams.
+    grammar_words = [w for w in uncached if w.pos == "grammar"]
+    for w in grammar_words:
+        preset = GRAMMAR_PRESETS.get(w.key)
+        if preset is None:
+            if progress_callback:
+                progress_callback(f"[yellow]No preset for grammar entry {w.russian!r}, skipping[/yellow]")
+            continue
+        cache.store(
+            word=w.russian, age=age, gender=gender,
+            translation=preset["translation"],
+            model="hand-written",
+            example_ru=preset.get("example_ru"),
+            example_en=preset.get("example_en"),
+            mnemonic=preset.get("mnemonic"),
+            svg_content=preset.get("svg") or "",
+        )
+        cached[w.key] = cache.get(w.key, age, gender)
+
+    uncached = [w for w in uncached if w.pos != "grammar"]
+
     if progress_callback:
-        progress_callback(f"[dim]{len(cached)} cached, {len(uncached)} to generate[/dim]")
+        progress_callback(f"[dim]{len(cached)} cached, {len(uncached)} to generate via API[/dim]")
 
     for i in range(0, len(uncached), BATCH_SIZE):
         batch = uncached[i:i + BATCH_SIZE]

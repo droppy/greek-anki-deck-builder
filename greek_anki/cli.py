@@ -625,6 +625,11 @@ def add_batch(
         console.print("\n[yellow]No cards were accepted.[/yellow]")
 
 
+def _ts() -> str:
+    """HH:MM:SS.mmm \u2014 millisecond-precision timestamp for diagnostic logs."""
+    return datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+
 @cli.command()
 @click.argument("apkg_path", type=click.Path(exists=True))
 @click.option("--limit", "-n", type=int, default=10, help="Number of cards to enrich")
@@ -639,8 +644,30 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
     """Backfill Collocations/Etymology (default) or all fields (--full) for existing cards."""
     from .card_cache import CardCache, generate_card_cached
 
-    console.print(f"Reading APKG: {apkg_path}...")
+    overall_start = time.perf_counter()
+
+    console.print(f"[dim][{_ts()}][/dim] Reading APKG: {apkg_path}...")
     notes = read_apkg_notes(apkg_path)
+    console.print(f"[dim][{_ts()}][/dim]   Loaded {len(notes)} notes")
+
+    # Map AnkiNote field name \u2192 corresponding GeneratedCard rendered attribute.
+    # Used both for filtering and for detecting when the cache can't fill a gap.
+    enrich_fields = [
+        ("Example", "example", "example"),
+        ("Comment", "comment", "comment"),
+        ("Collocations", "collocations", "collocations_html"),
+        ("Etymology", "etymology", "etymology_html"),
+    ]
+
+    def empty_fields_of(note):
+        return [label for label, attr, _ in enrich_fields if not getattr(note, attr).strip()]
+
+    def fields_cache_cannot_fill(note, card):
+        """Fields that are empty in the note AND empty on the generated card."""
+        return [
+            label for label, attr, card_attr in enrich_fields
+            if not getattr(note, attr).strip() and not getattr(card, card_attr).strip()
+        ]
 
     if full:
         # Original mode: find cards with no Example AND no Comment
@@ -650,34 +677,104 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
         mode_label = "minimal cards (no Example or Comment)"
     else:
         # Default: find cards missing any enrichable field
-        candidates = [
-            n for n in notes
-            if not n.example.strip() or not n.comment.strip()
-            or not n.collocations.strip() or not n.etymology.strip()
-        ]
+        candidates = [n for n in notes if empty_fields_of(n)]
         mode_label = "cards with empty fields"
 
-    console.print(f"  Found {len(candidates)} {mode_label}")
+    console.print(f"[dim][{_ts()}][/dim]   Found {len(candidates)} {mode_label}")
 
     if not candidates:
         console.print("[green]All cards already have content![/green]")
         return
 
     to_enrich = candidates[:limit]
-    console.print(f"  Will enrich {len(to_enrich)} cards\n")
+    console.print(f"[dim][{_ts()}][/dim]   Will enrich {len(to_enrich)} cards\n")
 
     cache = CardCache("card_cache.sq3")
     enriched_cards = []
+    skipped_unfillable = []
+    silent_cache_misses = []  # (word, normalized_key) \u2014 tracked for the perf summary
+    cache_hit_count = 0
+    api_call_count = 0
+    api_total_time = 0.0
+    cache_total_time = 0.0
+
     for i, note in enumerate(to_enrich, 1):
+        iter_start = time.perf_counter()
+        api_called = False
+
         word_clean = re.sub(r"<[^>]+>", "", note.back).strip()
 
-        console.print(f"[bold]\u2500\u2500 [{i}/{len(to_enrich)}] {word_clean} \u2500\u2500[/bold]")
+        console.print(f"[dim][{_ts()}][/dim] [bold]\u2500\u2500 [{i}/{len(to_enrich)}] {word_clean} \u2500\u2500[/bold]")
+        if not full:
+            empty = empty_fields_of(note)
+            console.print(
+                f"[dim][{_ts()}][/dim]   Empty fields to fill: "
+                f"[yellow]{', '.join(empty) or '(none)'}[/yellow]"
+            )
 
+        # Probe the cache directly so we can distinguish a silent cache MISS
+        # (note.back format doesn't match any cached normalized key \u2014 triggers
+        # an unannounced API call) from a cache HIT.
+        norm_key = normalize_greek(word_clean)
+        cache_probe_start = time.perf_counter()
+        cache_has = cache.get(word_clean) is not None
+        cache_total_time += time.perf_counter() - cache_probe_start
+
+        if not cache_has:
+            console.print(
+                f"[dim][{_ts()}][/dim]   [yellow]Not in cache "
+                f"(normalized key: {norm_key!r}) \u2014 calling API...[/yellow]"
+            )
+
+        api_start = time.perf_counter()
         try:
             card = generate_card_cached(word_clean, cache, model=model)
         except Exception as e:
-            console.print(f"[red]Error: {e}[/red]")
+            console.print(f"[dim][{_ts()}][/dim] [red]Error: {e}[/red]")
             continue
+        elapsed_call = time.perf_counter() - api_start
+
+        if cache_has:
+            cache_hit_count += 1
+        else:
+            api_called = True
+            api_call_count += 1
+            api_total_time += elapsed_call
+            silent_cache_misses.append((word_clean, norm_key))
+            console.print(
+                f"[dim][{_ts()}][/dim]   [green]API responded in {elapsed_call:.1f}s[/green]"
+            )
+
+        # If the cached entry exists but lacks the fields this note needs,
+        # force a fresh API call so the new content can fill the gap.
+        if not full and not api_called:
+            unfillable = fields_cache_cannot_fill(note, card)
+            if unfillable:
+                console.print(
+                    f"[dim][{_ts()}][/dim]   [dim]Cache cannot fill "
+                    f"{', '.join(unfillable)}; regenerating from API...[/dim]"
+                )
+                api_start = time.perf_counter()
+                try:
+                    card = generate_card_cached(word_clean, cache, model=model, force=True)
+                except Exception as e:
+                    console.print(f"[dim][{_ts()}][/dim] [red]Error: {e}[/red]")
+                    continue
+                elapsed_call = time.perf_counter() - api_start
+                cache_hit_count -= 1
+                api_called = True
+                api_call_count += 1
+                api_total_time += elapsed_call
+                console.print(
+                    f"[dim][{_ts()}][/dim]   [green]API responded in {elapsed_call:.1f}s[/green]"
+                )
+                still_unfillable = fields_cache_cannot_fill(note, card)
+                if still_unfillable:
+                    console.print(
+                        f"[dim][{_ts()}][/dim]   [yellow]API also returned empty "
+                        f"{', '.join(still_unfillable)}; those fields will stay empty.[/yellow]"
+                    )
+                    skipped_unfillable.append((word_clean, still_unfillable))
 
         if not no_review:
             _display_card_preview(card)
@@ -711,7 +808,15 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
                 }
             )
 
-        if i < len(to_enrich):
+        iter_elapsed = time.perf_counter() - iter_start
+        console.print(
+            f"[dim][{_ts()}][/dim]   [dim]done in {iter_elapsed * 1000:.0f}ms "
+            f"({'API' if api_called else 'cache'})[/dim]"
+        )
+
+        # Only rate-limit when an API call actually happened. Cache-hit
+        # iterations are essentially free and don't need to wait.
+        if i < len(to_enrich) and api_called:
             time.sleep(delay)
 
     if enriched_cards:
@@ -722,8 +827,32 @@ def enrich(apkg_path: str, limit: int, model: str, delay: float, no_review: bool
             output_name,
             tags=["enriched", f"added::{datetime.now().strftime('%Y-%m')}"],
         )
-        console.print(f"\n[bold green]Enrichment complete![/bold green]")
+        overall_elapsed = time.perf_counter() - overall_start
+        console.print(f"\n[dim][{_ts()}][/dim] [bold green]Enrichment complete![/bold green]")
         console.print(f"  Cards enriched: {len(enriched_cards)}")
+        console.print(
+            f"  [bold]Performance:[/bold] {overall_elapsed:.1f}s total · "
+            f"cache hits {cache_hit_count} · API calls {api_call_count} "
+            f"({api_total_time:.1f}s in API)"
+        )
+        if silent_cache_misses:
+            console.print(
+                f"  [yellow]Note: {len(silent_cache_misses)} note(s) had a Back field "
+                f"that didn't match any cached key (silent API call):[/yellow]"
+            )
+            for word, key in silent_cache_misses[:8]:
+                console.print(f"    [dim]· {word!r}  →  normalized key {key!r}[/dim]")
+            if len(silent_cache_misses) > 8:
+                console.print(f"    [dim]... and {len(silent_cache_misses) - 8} more[/dim]")
+        if skipped_unfillable:
+            console.print(
+                f"  [yellow]{len(skipped_unfillable)} card(s) had fields the API "
+                f"left empty (not all words have e.g. an etymology):[/yellow]"
+            )
+            for word, fields in skipped_unfillable[:5]:
+                console.print(f"    [dim]· {word}: {', '.join(fields)}[/dim]")
+            if len(skipped_unfillable) > 5:
+                console.print(f"    [dim]... and {len(skipped_unfillable) - 5} more[/dim]")
         console.print(f"  Import [cyan]{output_path}[/cyan] into Anki")
     else:
         console.print("\n[yellow]No cards were enriched.[/yellow]")

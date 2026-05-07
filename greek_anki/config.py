@@ -16,7 +16,7 @@ DEFAULT_APKG = "AZ_greek_words_new_fields.apkg"
 DEFAULT_CARD_CACHE = "card_cache.sq3"
 
 # Claude API
-DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+DEFAULT_MODEL = "claude-opus-4-7"
 PROMPT_TEMPLATE_PATH = Path(__file__).parent.parent / "prompts" / "card_prompt.txt"
 
 # Card template

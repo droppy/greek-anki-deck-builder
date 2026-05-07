@@ -1,0 +1,1 @@
+python -m math_anki build-deck -l 1 -l 2 -l 4 -l 6 --age 7 --generate-missing -y --deck-name "Kids Math (Levels 1,2)" -o kids_math_updated.apkg

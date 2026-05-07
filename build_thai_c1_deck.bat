@@ -1,0 +1,1 @@
+python -m english_anki build-deck --lang th -o english_c1_thai.apkg --cache-db english_card_cache_th.sq3 --deck-name "Eng-Thai C1" --generate-missing

@@ -1,0 +1,1 @@
+python -m russian_dict build-deck --level all --age 7 --gender girl --generate-missing -y --deck-name "Melissa Russian" -o russian_melissa.apkg

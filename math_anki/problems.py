@@ -130,6 +130,41 @@ _GENERATORS = {
 }
 
 
+_OP_FUNCS = {
+    "+": lambda a, b: a + b,
+    "-": lambda a, b: a - b,
+    "*": lambda a, b: a * b,
+    "/": lambda a, b: a // b if b != 0 else 0,
+}
+
+
+def _problems_from_pairs(pairs, op: str) -> List[MathProblem]:
+    """Build problems from an explicit list of (a, b) pairs.
+
+    For commutative ops (+, *), pairs are de-duped in canonical (min, max)
+    form and rendered as a single card with `has_mirror=True` when a != b.
+    """
+    compute = _OP_FUNCS[op]
+    commutative = op in ("+", "*")
+    problems = []
+    seen = set()
+    for a, b in pairs:
+        if commutative:
+            canonical = (min(a, b), max(a, b))
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            problems.append(MathProblem(
+                a=a, b=b, op=op, answer=compute(a, b), level=0,
+                has_mirror=(a != b),
+            ))
+        else:
+            problems.append(MathProblem(
+                a=a, b=b, op=op, answer=compute(a, b), level=0,
+            ))
+    return problems
+
+
 def generate_problems(level: int) -> List[MathProblem]:
     """Generate all problems for a given level.
 
@@ -140,15 +175,20 @@ def generate_problems(level: int) -> List[MathProblem]:
         raise ValueError(f"Unknown level {level}. Valid levels: {sorted(LEVELS.keys())}")
 
     level_def = LEVELS[level]
-    a_range = level_def["a_range"]
-    b_range = level_def["b_range"]
     ops = level_def["ops"]
+    pairs = level_def.get("pairs")
 
     all_problems = []
-    for op in ops:
-        gen = _GENERATORS[op]
-        problems = gen(a_range, b_range)
-        all_problems.extend(problems)
+    if pairs is not None:
+        for op in ops:
+            all_problems.extend(_problems_from_pairs(pairs, op))
+    else:
+        a_range = level_def["a_range"]
+        b_range = level_def["b_range"]
+        for op in ops:
+            gen = _GENERATORS[op]
+            problems = gen(a_range, b_range)
+            all_problems.extend(problems)
 
     # Deduplicate by key (e.g., level 3 combines L1+L2 ops, no actual dupes
     # but level 8 might have overlapping ranges)

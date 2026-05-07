@@ -39,8 +39,9 @@ greek-anki/
 │   ├── __main__.py                  # python -m russian_dict entrypoint
 │   ├── cli.py                       # Click CLI — all commands
 │   ├── config.py                    # Fields, CSS, card templates
-│   ├── vocabulary.py                # 149 basic + 246 conversational words by theme
-│   ├── generator.py                 # Claude API (translations, examples, mnemonics, SVG)
+│   ├── vocabulary.py                # 283 basic + 372 conversational, ordered by importance (tiered)
+│   ├── grammar_presets.py           # Hand-written content + SVGs for 12 grammar concept cards
+│   ├── generator.py                 # Claude API (skips API for pos=grammar; uses presets)
 │   ├── cache.py                     # SQLite cache (word + age + gender key)
 │   └── deck_builder.py             # Assemble APKG with SVG→PNG images
 ├── english_anki/                     # C1+ English vocabulary for Russian speakers
@@ -170,7 +171,8 @@ python -m greek_anki cache-status --freq-db freq_list.sq3 --range 1 5000
 ### Key Details
 
 - Problems generated deterministically by `problems.py`; Claude API generates only hints, fun facts, and difficulty ratings
-- 8 levels: L1 addition (100 cards), L2 subtraction (55), L3 mixed +/- (155), L4 multiplication (100), L5 division (81), L6 two-digit+ (90), L7 two-digit- (90), L8 mixed all (675)
+- 9 levels: L1 addition (55), L2 subtraction (55), L3 mixed +/- (110), L4 basic multiplication (17 — 1–5 × 1–5 plus 6×6, 7×7; starter set for 1st-graders), L5 division (81), L6 two-digit+ (90), L7 two-digit- (90), L8 mixed all (603), L9 full multiplication tables (45 — 1–9 × 1–9)
+- Level definitions in `config.py` normally use `a_range`/`b_range`; the optional `pairs` key lets a level specify an explicit list of `(a, b)` operand pairs instead (used by L4)
 - Cache keyed by `(problem_key, age)` composite — different ages get different hint styles
 - Cards have 4 fields: Problem (colored by operation), Answer, Hint (emoji visual), FunFact
 - Kid-friendly CSS: Comic Sans, gradient background, large fonts, operation-specific colors (+green, -red, ×blue, ÷orange)
@@ -259,13 +261,22 @@ python -m russian_abc build-deck --age 6 --gender boy -o abc_dalle.apkg  # DALL-
 
 ### Key Details
 
-- 149 basic words + 246 conversational words = 395 total, organized by 20 themes
-- Two deck levels: `basic` (starter ~150 words) and `conversational` (extends to ~395)
+- 283 basic words + 372 conversational words = 655 total, organized by 26 themes
+- Two deck levels: `basic` (starter ~283 words) and `conversational` (extends to ~655)
+- **Order is by IMPORTANCE for daily use**, not topical/alphabetical. Basic deck tiers:
+  Tier 1 survival phrases (привет, мама, я, помоги мне) → Tier 2 grammar concepts →
+  Tier 3 needs/feelings (хочу пить, болит живот) → Tier 4 asking teacher → Tier 5 commands →
+  Tier 6 social play → topical expansion (verbs, adj, animals, food, etc.)
 - Claude generates: kid-friendly translation with emoji, example sentence (RU+EN), sound mnemonic, SVG illustration
 - Cards have 5 fields: Word, Translation, Example, Mnemonic, Visual
 - SVG rendered to PNG via Playwright, same pipeline as russian_abc
 - Cache keyed by `(word, age, gender)` — different ages/genders get different examples and mnemonics
-- Themes: animals, food, family, colors, numbers, verbs, adjectives, body, home, nature, clothes, places, transport, time, emotions, school, phrases, pronouns, grammar, people
+- **Grammar concept cards** (`pos="grammar"`, theme=`grammar_concepts`): 12 hand-written cards
+  explaining noun gender, adjective endings, verb conjugation, past-tense gender, plurals.
+  Content + SVG diagrams live in `grammar_presets.py`; `generator.py` skips API calls and
+  writes presets directly to cache (model="hand-written"). To add/edit a grammar card,
+  add the entry in `vocabulary.py` AND a matching key in `GRAMMAR_PRESETS`.
+- Themes: verbs, phrases, social, food, adjectives, school, animals, home, time, numbers, nature, school_phrases, family, body, clothes, playground, places, pronouns, grammar, needs, emotions, colors, grammar_concepts, commands, transport, people
 
 ### Russian Dict Commands
 
