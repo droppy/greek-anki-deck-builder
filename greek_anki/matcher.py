@@ -92,12 +92,17 @@ def find_note_by_word(word: str, notes) -> "AnkiNote | None":
     return None
 
 
-def freq_word_in_anki(freq_word: str, anki_back_fields: List[str]) -> bool:
+def freq_word_in_anki(freq_word: str, anki_back_fields: List[str], fuzzy: bool = True) -> bool:
     """Check if a frequency list word exists in any Anki Back field.
 
     Args:
         freq_word: A lemma from the frequency list.
         anki_back_fields: List of Back field values from existing Anki notes.
+        fuzzy: If True (default), also match via Levenshtein distance ≤ 1
+               for words longer than 3 characters — handles accent variants.
+               Set to False for exact-only matching when the heuristic produces
+               false positives (e.g. πιθανόν vs πιθανός — distinct words that
+               differ by exactly one character).
 
     Returns:
         True if the word is found in the deck.
@@ -109,7 +114,7 @@ def freq_word_in_anki(freq_word: str, anki_back_fields: List[str]) -> bool:
         for token in tokens:
             if token == freq_normalized:
                 return True
-            if len(freq_normalized) > 3 and levenshtein_distance(token, freq_normalized) <= 1:
+            if fuzzy and len(freq_normalized) > 3 and levenshtein_distance(token, freq_normalized) <= 1:
                 return True
 
     return False

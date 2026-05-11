@@ -294,7 +294,13 @@ def _interactive_review(card, word: str) -> str:
               help="Card cache database path")
 @click.option("--model", default=DEFAULT_MODEL, help="Claude model to use")
 @click.option("--no-review", is_flag=True, help="Skip interactive review")
-def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str, no_review: bool):
+@click.option("--force-add", is_flag=True,
+              help="Disable fuzzy duplicate detection (Levenshtein heuristic). "
+                   "Exact duplicates are still blocked. Use when adding a word "
+                   "that's similar-but-distinct from one already in the deck "
+                   "(e.g. πιθανόν vs πιθανός).")
+def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str,
+        no_review: bool, force_add: bool):
     """Add one or more words: generate via Claude, review, and create APKG.
 
     \b
@@ -302,6 +308,7 @@ def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str, no_r
       python -m greek_anki add αίτηση
       python -m greek_anki add αίτηση πρόταση κίνηση
       python -m greek_anki add αίτηση --apkg AZ_greek_words.apkg --freq-db freq_list.sq3
+      python -m greek_anki add πιθανόν --apkg AZ_greek_words.apkg --force-add
     """
     from .card_cache import CardCache, generate_card_cached
     import genanki
@@ -331,13 +338,20 @@ def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str, no_r
                     else:
                         console.print(f"  [dim]Not in frequency list[/dim]")
 
-            # Duplicate check
-            if back_fields and freq_word_in_anki(word, back_fields):
+            # Duplicate check. With --force-add, the fuzzy heuristic is
+            # disabled so similar-but-distinct words (πιθανόν vs πιθανός)
+            # can be added. Exact matches are still blocked.
+            if back_fields and freq_word_in_anki(word, back_fields, fuzzy=not force_add):
                 console.print(f"[yellow]Already in deck, skipping.[/yellow]")
                 if freq_db:
                     with FreqDB(freq_db) as db:
                         db.mark_processed(word, status=IN_ANKI, notes="already in deck")
                 continue
+            if back_fields and force_add and freq_word_in_anki(word, back_fields, fuzzy=True):
+                console.print(
+                    f"[dim]Fuzzy match found in deck (similar word exists), "
+                    f"but --force-add overrides — adding anyway.[/dim]"
+                )
 
             # Generate with retry loop
             card = None
