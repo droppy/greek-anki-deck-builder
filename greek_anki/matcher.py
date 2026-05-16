@@ -17,6 +17,9 @@ _CONFUSABLES = {
 }
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+# Break/block tags act as line separators; without this, stripping them glues
+# adjacent words together (e.g. "πειθώ<br>πείθω" -> "πειθώπείθω").
+_HTML_BREAK_RE = re.compile(r"<\s*/?\s*(br|div|p|li|tr)\b[^>]*>", re.IGNORECASE)
 _ARTICLE_RE = None  # built lazily
 
 
@@ -58,7 +61,10 @@ def extract_tokens(text: str) -> List[str]:
 
     Splits on comma, slash, and newline, normalizes each token.
     """
-    # Split on newlines BEFORE normalization (normalize_greek collapses whitespace)
+    # Split on newlines BEFORE normalization (normalize_greek collapses
+    # whitespace and strips HTML). Convert HTML break/block tags to newlines
+    # first so multi-word notes using <br>/<div> aren't glued into one token.
+    text = _HTML_BREAK_RE.sub("\n", text)
     lines = re.split(r"[\n\r]+", text)
     tokens = []
     for line in lines:
@@ -107,14 +113,30 @@ def freq_word_in_anki(freq_word: str, anki_back_fields: List[str], fuzzy: bool =
     Returns:
         True if the word is found in the deck.
     """
+    return find_match_in_anki(freq_word, anki_back_fields, fuzzy=fuzzy) is not None
+
+
+def find_match_in_anki(
+    freq_word: str, anki_back_fields: List[str], fuzzy: bool = True
+) -> "tuple[str, str] | None":
+    """Find an existing Anki note that matches a word.
+
+    Returns (matched_token, match_kind) where match_kind is "exact" or "fuzzy",
+    or None if no match. Exact matches are preferred over fuzzy.
+    """
     freq_normalized = normalize_greek(freq_word)
 
+    fuzzy_hit: "tuple[str, str] | None" = None
     for back_field in anki_back_fields:
         tokens = extract_tokens(back_field)
         for token in tokens:
             if token == freq_normalized:
-                return True
-            if fuzzy and len(freq_normalized) > 3 and levenshtein_distance(token, freq_normalized) <= 1:
-                return True
-
-    return False
+                return (token, "exact")
+            if (
+                fuzzy
+                and fuzzy_hit is None
+                and len(freq_normalized) > 3
+                and levenshtein_distance(token, freq_normalized) <= 1
+            ):
+                fuzzy_hit = (token, "fuzzy")
+    return fuzzy_hit

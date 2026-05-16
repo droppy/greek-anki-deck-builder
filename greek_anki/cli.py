@@ -28,7 +28,7 @@ import genanki
 from .anki_deck import AnkiNote, create_supplement_apkg, get_anki_model, read_apkg_notes
 from .config import DEFAULT_APKG, DEFAULT_CARD_CACHE, DEFAULT_FREQ_DB, DEFAULT_MODEL, DECK_ID, DECK_NAME
 from .freq_list import IN_ANKI, SKIPPED, FreqDB
-from .matcher import find_note_by_word, freq_word_in_anki, normalize_greek
+from .matcher import find_match_in_anki, find_note_by_word, freq_word_in_anki, normalize_greek
 
 console = Console()
 
@@ -341,17 +341,34 @@ def add(words: tuple, freq_db: str, apkg: str, cache_path: str, model: str,
             # Duplicate check. With --force-add, the fuzzy heuristic is
             # disabled so similar-but-distinct words (πιθανόν vs πιθανός)
             # can be added. Exact matches are still blocked.
-            if back_fields and freq_word_in_anki(word, back_fields, fuzzy=not force_add):
-                console.print(f"[yellow]Already in deck, skipping.[/yellow]")
+            match = find_match_in_anki(word, back_fields, fuzzy=not force_add) if back_fields else None
+            if match is not None:
+                matched_token, kind = match
+                if kind == "fuzzy":
+                    console.print(
+                        f"[yellow]Already in deck (fuzzy match: '{matched_token}', "
+                        f"Levenshtein ≤ 1), skipping.[/yellow]"
+                    )
+                    console.print(
+                        f"[dim]If '{word}' is actually a different word, rerun with "
+                        f"--force-add (e.g. add.bat {word} 1) to bypass the fuzzy check.[/dim]"
+                    )
+                else:
+                    console.print(
+                        f"[yellow]Already in deck (exact match: '{matched_token}'), skipping.[/yellow]"
+                    )
                 if freq_db:
                     with FreqDB(freq_db) as db:
-                        db.mark_processed(word, status=IN_ANKI, notes="already in deck")
+                        db.mark_processed(word, status=IN_ANKI, notes=f"already in deck ({kind})")
                 continue
-            if back_fields and force_add and freq_word_in_anki(word, back_fields, fuzzy=True):
-                console.print(
-                    f"[dim]Fuzzy match found in deck (similar word exists), "
-                    f"but --force-add overrides — adding anyway.[/dim]"
-                )
+            if back_fields and force_add:
+                fuzzy_match = find_match_in_anki(word, back_fields, fuzzy=True)
+                if fuzzy_match is not None:
+                    matched_token, _ = fuzzy_match
+                    console.print(
+                        f"[dim]Fuzzy match in deck ('{matched_token}'), "
+                        f"but --force-add overrides — adding anyway.[/dim]"
+                    )
 
             # Generate with retry loop
             card = None
@@ -573,11 +590,14 @@ def add_batch(
                 f"\n[bold]\u2500\u2500 [{i}/{len(selected)}] {word} (rank {rank}) \u2500\u2500[/bold]"
             )
 
-            if freq_word_in_anki(word, back_fields):
-                console.print("[yellow]Already in deck, skipping[/yellow]")
+            match = find_match_in_anki(word, back_fields)
+            if match is not None:
+                matched_token, kind = match
+                label = f"fuzzy match: '{matched_token}'" if kind == "fuzzy" else f"exact match: '{matched_token}'"
+                console.print(f"[yellow]Already in deck ({label}), skipping[/yellow]")
                 with FreqDB(freq_db) as db:
                     db.mark_processed(
-                        word, status=IN_ANKI, notes="sync: found during batch"
+                        word, status=IN_ANKI, notes=f"sync: found during batch ({kind})"
                     )
                 continue
 
